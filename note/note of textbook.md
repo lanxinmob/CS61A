@@ -571,3 +571,163 @@ def minimum_mewtations(typed, source, limit):
 - 调用 `print()` 时会首先尝试寻找并调用该对象的`__str__()`方法，如果没有就回退，寻找并调用该对象的`__repr__()`方法
 - 在python的交互式环境 (>>>)中相反，总是调用`__repr__()` 来显示结果。
 
+```python
+>>> b = Account('Spock')
+>>> b.balance = 200
+>>> [acc.balance for acc in (a, b)]
+[0, 200]
+```
+- 循环部分遍历了元组 (a, b) 中的每一个元素
+
+### 2.7.2   Special Methods
+- `__init__` automatically invoked whenever an object is constructed.
+- 重写`__bool__`方法，在判断object的布尔值时自动调用。
+   ```python
+   >>> Account.__bool__ = lambda self: self.balance != 0
+   >>> bool(Account('Jack'))
+   False
+   >>> if not Account('Jack'):
+         print('Jack has nothing')
+   Jack has nothing
+   ```
+- `__len__` 当序列为空时，布尔值返回 `False`
+  ```python
+    >>> 'Go Bears!'.__len__()
+    9
+    >>> bool('')
+    False
+    >>> bool([])
+    False
+    >>> bool('Go Bears!')
+    True
+  ```
+- `__getitem__`是元素选择器也可以被直接调用
+   ```python
+   >>> 'Go Bears!'[3]
+   'B'
+  >>> 'Go Bears!'.__getitem__(3)
+  'B'
+   ```
+- `object` 通过加入`__call__`方法，可以像函数一样可被调用。
+  ```python
+  >>> class Adder(object):
+        def __init__(self, n):
+            self.n = n
+        def __call__(self, k):
+            return self.n + k
+  >>> add_three_obj = Adder(3)
+  >>> add_three_obj(4)
+  7
+  ```
+### 2.7.4   Generic Functions
+#### 提供接口
+```python
+>>> class Complex(Number):
+        def add(self, other):
+            return ComplexRI(self.real + other.real, self.imag + other.imag)
+        def mul(self, other):
+            magnitude = self.magnitude * other.magnitude
+            return ComplexMA(magnitude, self.angle + other.angle)
+
+>>> from math import atan2
+>>> class ComplexRI(Complex):
+        def __init__(self, real, imag):
+            self.real = real
+            self.imag = imag
+        @property
+        def magnitude(self):
+            return (self.real ** 2 + self.imag ** 2) ** 0.5
+        @property
+        def angle(self):
+            return atan2(self.imag, self.real)
+        def __repr__(self):
+            return 'ComplexRI({0:g}, {1:g})'.format(self.real, self.imag)
+
+>>> from math import sin, cos, pi
+>>> class ComplexMA(Complex):
+        def __init__(self, magnitude, angle):
+            self.magnitude = magnitude
+            self.angle = angle
+        @property
+        def real(self):
+            return self.magnitude * cos(self.angle)
+        @property
+        def imag(self):
+            return self.magnitude * sin(self.angle)
+        def __repr__(self):
+            return 'ComplexMA({0:g}, {1:g} * pi)'.format(self.magnitude, self.angle/pi)
+
+
+>>> ri = ComplexRI(5, 12)
+>>> ri.real
+5
+>>> ri.magnitude
+13.0
+>>> ri.real = 9
+>>> ri.real
+9
+>>> ri.magnitude
+15.0
+```
+#### 类型调度
+```python
+>>> def is_real(c):
+        """Return whether c is a real number with no imaginary part."""
+        if isinstance(c, ComplexRI):
+            return c.imag == 0
+        elif isinstance(c, ComplexMA):
+            return c.angle % pi == 0
+>>> is_real(ComplexRI(1, 1))
+False
+>>> is_real(ComplexMA(2, pi))
+True
+
+>>> Rational.type_tag = 'rat'
+>>> Complex.type_tag = 'com'
+>>> Rational(2, 5).type_tag == Rational(1, 2).type_tag
+True
+>>> ComplexRI(1, 1).type_tag == ComplexMA(2, pi/2).type_tag
+True
+>>> Rational(2, 5).type_tag == ComplexRI(1, 1).type_tag
+False
+
+>>> class Number:
+        def __add__(self, other):
+            if self.type_tag == other.type_tag:
+                return self.add(other)
+            elif (self.type_tag, other.type_tag) in self.adders:
+                return self.cross_apply(other, self.adders)
+        def __mul__(self, other):
+            if self.type_tag == other.type_tag:
+                return self.mul(other)
+            elif (self.type_tag, other.type_tag) in self.multipliers:
+                return self.cross_apply(other, self.multipliers)
+        def cross_apply(self, other, cross_fns):
+            cross_fn = cross_fns[(self.type_tag, other.type_tag)]
+            return cross_fn(self, other)
+        adders = {("com", "rat"): add_complex_and_rational,
+                  ("rat", "com"): add_rational_and_complex}
+        multipliers = {("com", "rat"): mul_complex_and_rational,
+                       ("rat", "com"): mul_rational_and_complex}
+```
+#### 类型转换
+```python
+>>> class Number:
+        def __add__(self, other):
+            x, y = self.coerce(other)
+            return x.add(y)
+        def __mul__(self, other):
+            x, y = self.coerce(other)
+            return x.mul(y)
+        def coerce(self, other):
+            if self.type_tag == other.type_tag:
+                return self, other
+            elif (self.type_tag, other.type_tag) in self.coercions:
+                return (self.coerce_to(other.type_tag), other)
+            elif (other.type_tag, self.type_tag) in self.coercions:
+                return (self, other.coerce_to(self.type_tag))
+        def coerce_to(self, other_tag):
+            coercion_fn = self.coercions[(self.type_tag, other_tag)]
+            return coercion_fn(self)
+        coercions = {('rat', 'com'): rational_to_complex}
+```

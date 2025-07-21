@@ -195,3 +195,94 @@ pumbaa = pumbaa(pumbaa)
         yield from partitions_(n, m - 1)
   ```
 - 需要注意`yield from`不参与计算，只是委托后面生成器将任务执行完毕并把结果转发出来。
+## OOP
+- ```python 
+  def repr(x):
+  return type(x).__repr__(x)
+  ```
+  通过类来获取类中定义的`__repr__`方法
+- ```python
+  def gcd(n, d):
+      while n != d:
+          n, d = min(n, d), abs(n-d)
+      return n
+
+  class Ratio:      
+      def __init__(self, n, d):
+          self.numer = n
+          self.denom = d
+
+      def __repr__(self):
+          return 'Ratio({0}, {1})'.format(self.numer, self.denom)
+
+      def __str__(self):
+          return '{0}/{1}'.format(self.numer, self.denom)
+
+      def __add__(self, other):
+          if isinstance(other, int):
+              n = self.numer + self.denom * other
+              d = self.denom
+          elif isinstance(other, Ratio):
+              n = self.numer * other.denom + self.denom * other.numer
+              d = self.denom * other.denom
+          elif isinstance(other, float):
+              return float(self) + other
+              
+          g = gcd(n, d)
+          return Ratio(n//g, d//g)
+
+      __radd__ = __add__
+
+      def __float__(self):
+          return self.numer / self.denom
+  ```
+## Efficiency
+### Measuring Efficiency !!!
+- ```python
+  def fib(n):
+    if n == 0 or n == 1:
+        return n
+    else:
+        return fib(n-2) + fib(n-1)
+
+  def count(f):
+    def counted(n):
+        counted.call_count += 1
+        return f(n)
+    counted.call_count = 0
+    return counted
+
+  fib = count(fib)
+  """需要注意这个时候fib已经变成了初始化好的counted，等待n的传入，
+  counted中的f依然指向fib，但是fib中fib已经变成了counted。
+  """
+  result = fib(5) 
+  5
+  fib.call_cout
+  15
+  ```
+### Memoization
+- ```python
+  def memo(f):
+      cache = {}
+      def  memoized(n):
+         if n not in cache:  
+            cache[n] = f(n)
+         return cache[n]
+      return memoized
+  ``` 
+### Composition
+#### Tree Class
+- ```python
+  def indented(self):
+      line = []
+      for b in self.branches():
+        for c in b.indented():
+           line.append(' ',c)
+    return [str(self.label)]+line
+ 
+  def __str__(self):
+    return '\n'.join(self.indented())
+    """也就是用换行来分割各个已缩进好的字符串
+    """
+  ```
