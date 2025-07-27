@@ -731,3 +731,94 @@ False
             return coercion_fn(self)
         coercions = {('rat', 'com'): rational_to_complex}
 ```
+### 3.1.1 Programming Languages
+- 设计一个解释器似乎令人畏惧，然而解释器有一个优雅的通用结构：两个相互递归的函数。第一个函数对环境中表达式求值；第二个函数将函数应用于参数。
+- 这些函数是递归的，因为它们是相互定义的：应用一个函数需要对其函数体中的表达式求值，而对一个表达式求值可能涉及应用一个或多个函数。 
+
+### 3.2.5   Turtle graphics
+```scheme
+(define (repeat k fn)
+    (if (> k 0)
+        (begin (fn) (repeat (- k 1) fn))
+        nil))
+
+(define (tri fn)
+    (repeat 3 (lambda () (fn) (lt 120))))
+
+(define (sier d k)
+    (tri (lambda ()
+           (if (= k 1) (fd d) (leg d k)))))
+
+(define (leg d k)
+    (sier (/ d 2) (- k 1))
+    (penup)
+    (fd d)
+    (pendown))
+```
+![sier](./sier.png)
+```scheme
+(repeat 5
+          (lambda () (fd 100)
+                     (repeat 5
+                             (lambda () (fd 20) (rt 144)))
+                     (rt 144)))
+```
+### 3.3 Exceptions
+#### Raising exceptions
+- An exception is a object instance with a class that inherits, either directly or indirectly, from the *BaseException* class. The assert statement introduced in Chapter 1 raises an exception with the class *AssertionError*. In general, any exception instance can be raised with the raise statement. The general form of raise statements are described in the Python docs. The most common use of raise constructs an exception instance and raises it.
+```scheme
+>>> raise Exception('An error occurred')
+Traceback (most recent call last):
+  File "<stdin>", line 1, in <module>
+Exception: an error occurred
+```
+#### Handling exceptions
+- An exception can be handled by an enclosing try statement. A try statement consists of multiple clauses; the first begins with try and the rest begin with except:
+```scheme
+try:
+    <try suite>
+except <exception class> as <name>:
+    <except suite>
+...
+```
+- The <try suite> is always executed immediately when the try statement is executed. Suites of the except clauses are only executed when an exception is raised during the course of executing the <try suite>. Each except clause specifies the particular class of exception to handle. For instance, if the <exception class> is AssertionError, then any instance of a class inheriting from AssertionError that is raised during the course of executing the <try suite> will be handled by the following <except suite>. Within the <except suite>, the identifier <name> is bound to the exception object that was raised, but this binding does not persist beyond the <except suite>.
+
+For example, we can handle a *ZeroDivisionError* exception using a try statement that binds the name x to 0 when the exception is raised.
+```scheme
+>>> try:
+        x = 1/0
+    except ZeroDivisionError as e:
+        print('handling a', type(e))
+        x = 0
+handling a <class 'ZeroDivisionError'>
+>>> x
+0
+```
+- **大概流程：raise 抛出异常对象 → 异常在调用栈中传递 → 直到遇到对应的 except 块被捕获**
+```scheme
+class IterImproveError(Exception):
+    def __init__(self, last_guess):
+        self.last_guess = last_guess
+
+def improve(update, done, guess=1, max_updates=1000):
+    k = 0
+    try:
+        while not done(guess) and k < max_updates:
+            guess = update(guess)
+            k += 1
+        return guess
+    except ValueError:
+        raise IterImproveError(guess)
+
+def find_zero(f, guess=1):
+    def done(x):
+        return f(x) == 0
+    try:
+        return improve(newton_update(f), done, guess)
+    except IterImproveError as e:
+        return e.last_guess
+
+>>> from math import sqrt
+>>> find_zero(lambda x: 2*x*x + sqrt(x))
+-0.030211203830201594
+```
